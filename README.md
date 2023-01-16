@@ -1,1 +1,1 @@
-# IPI-agilit--scrum
+# IPI-agilit-scrum
