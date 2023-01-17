@@ -202,6 +202,4 @@ def main(argv: list[str] | None = None) -> None:
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
-    
-    # test
+    main(sys.argv[1:])  
