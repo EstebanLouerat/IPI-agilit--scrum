@@ -31,7 +31,7 @@ def db_init():
 
     cursor.execute('''CREATE TABLE IF NOT EXISTS order_ord (
     	id_ord INTEGER PRIMARY KEY AUTOINCREMENT,
-    	ord_ref VARCHAR, 
+    	ord_ref VARCHAR,
     	ord_hour DATE,
     	id_wtr INTEGER ,
     	id_tbl INTEGER,
@@ -62,28 +62,31 @@ def api_add_order(order, dishes):
     order["ref"] = "ref-" + str(random.randint(100000, 999999))
     order["date"] = date.today()
     order["waiter"] = WAITER
-
     cursor.execute(
         "INSERT INTO order_ord (ord_ref, ord_hour, id_wtr, id_tbl ) VALUES (:ref, :date, :waiter, :table)", order)
     database.commit()
-    rqs = cursor.execute("SELECT id_ord FROM order_ord ORDER BY id_ord DESC LIMIT 1")
-    id_order = 0
-    for rq in rqs:
-        id_order = rq[0]
-    objs = []
-    for dish in dishes:
-        objs += [[id_order,dish]]
+    curs = cursor.execute(
+        "SELECT id_ord FROM order_ord ORDER BY id_ord DESC LIMIT 1")
+    id_order = [cur[0] for cur in curs]
+    objs = [[*id_order, dish] for dish in dishes]
     for obj in objs:
         cursor.execute(
             "INSERT INTO order_dish_odh (id_ord, id_dsh) VALUES (?,?)", obj)
     database.commit()
+
 
 def api_show_orders():
     os.system('clear')
     orders = cursor.execute(
         "SELECT * FROM order_ord")
     for order in orders:
-        print(order[0],'-',order[1])
+        print(order[0], '-', order[1])
+    if input("Afficher details (y/n) : ") == 'y':
+        id_order = input("Selectionner un id : ")
+        details = cursor.execute(
+            "SELECT * FROM dish_dsh INNER JOIN order_dish_odh ON dish_dsh.id_dsh=order_dish_odh.id_dsh AND order_dish_odh.id_ord=(?)", id_order)
+        for detail in details:
+            print(detail[1]+"\t"+str(detail[2]))
 
 
 def api_add_dish(dish):
@@ -98,11 +101,29 @@ def api_show_dishes():
     for dish in dishes:
         print("id", dish[0], " | ", dish[1], "\t| ", dish[2], "E")
 
+
 def api_show_waiter():
     os.system('clear')
     waiters = cursor.execute("SELECT * FROM waiter_wtr")
     for waiter in waiters:
         print("id", waiter[0], " | ", waiter[1], " ", waiter[2])
+
+def api_show_table():
+    os.system('clear')
+    tables = cursor.execute("SELECT * FROM table_tbl")
+    for table in tables:
+        print("id", table[0])
+
+def api_show_order_by_table_id():
+    api_show_table()
+    std_in = input("Selectionner une table : ")
+    os.system('clear')
+    orders = cursor.execute(
+        "SELECT * FROM order_ord INNER JOIN table_tbl ON table_tbl.id_tbl = (?)", std_in)
+    for order in orders:
+        print(order[0], '-', order[1])
+
+
 
 #######################################################################################
 #                        TERMINAL FUNCTIONS                                           #
@@ -113,7 +134,7 @@ def app_menu() -> str:
     print("0 - Ajouter une commande")
     print("1 - Supprimer une commande par id")
     print("2 - Voir les commandes")
-    print("3 - Voir une commande par id")
+    print("3 - Voir les commandes par table")
     print("4 - Prix total des commandes")
     print("5 - Ajouter un plat")
     print("6 - Afficher les plats")
@@ -133,7 +154,7 @@ def add_order():
     os.system('clear')
     api_show_dishes()
     while True:
-        std_in = input("Ajouter un plat (y/n)")
+        std_in = input("Ajouter un plat (y/n) : ")
         if std_in == "y" or std_in == "":
             dish_id = int(input("Indiquer l'id du plat : "))
             order["table"] = table_id
@@ -154,7 +175,6 @@ def prog_exit():
     database.close()
     exit()
 
-    
 
 def main():
     db_init()
@@ -164,14 +184,14 @@ def main():
         std_in = app_menu()
         match std_in:
             case "0":
-                a,b = add_order()
-                api_add_order(a,b)
+                order, dishes = add_order()
+                api_add_order(order, dishes)
             case "1":
                 print("Supprimer une commande")
             case "2":
                 api_show_orders()
             case "3":
-                print("Voir une commande pa id")
+                api_show_order_by_table_id()
             case "4":
                 print("Prix total des commandes")
             case "5":
