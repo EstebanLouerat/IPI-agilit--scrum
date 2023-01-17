@@ -10,58 +10,80 @@ from datetime import date
 
 database: Connection = sqlite3.connect('restaurant.db')
 cursor: Cursor = database.cursor()
+WAITER = 0
 
 ########################################################################################
 #                                     INIT                                             #
 ########################################################################################
 
+
 def db_init():
     cursor.execute('''CREATE TABLE IF NOT EXISTS table_tbl (
-                    	id_tbl INTEGER PRIMARY KEY AUTOINCREMENT,
-                    	tbl_num INTEGER);''')
-    cursor.execute('''CREATE TABLE IF NOT EXISTS order_ord(
-                        id_ord INTEGER PRIMARY KEY AUTOINCREMENT,
-                        ord_ref VARCHAR,
-                        ord_hour DATE,
-                        fk_ord_tbl INTEGER,
-                        FOREIGN KEY(fk_ord_tbl) REFERENCES table_tbl(id_tbl));''')
-    cursor.execute('''CREATE TABLE IF NOT EXISTS dish_dsh(
-                        id_dsh INTEGER PRIMARY KEY AUTOINCREMENT,
-                        dsh_name VARCHAR,
-                        dsh_price FLOAT,
-                        fk_dsh_ord INTEGER,
-                        FOREIGN KEY(fk_dsh_ord) REFERENCES order_tbl(dish_dsh));''')
-    cursor.execute('''CREATE TABLE IF NOT EXISTS tbl_ord (
-	                    tbl_id INTEGER,
-	                    ord_id INTEGER,
-	                    PRIMARY KEY(tbl_id, ord_id));''')
+    	id_tbl INTEGER PRIMARY KEY AUTOINCREMENT,
+    	tbl_num INTEGER
+    );''')
+
+    cursor.execute('''CREATE TABLE IF NOT EXISTS waiter_wtr (
+    	id_wtr INTEGER PRIMARY KEY AUTOINCREMENT,
+    	wtr_firstname VARCHAR,
+    	wtr_lastname VARCHAR
+    );''')
+
+    cursor.execute('''CREATE TABLE IF NOT EXISTS order_ord (
+    	id_ord INTEGER PRIMARY KEY AUTOINCREMENT,
+    	ord_ref VARCHAR, 
+    	ord_hour DATE,
+    	id_wtr INTEGER ,
+    	id_tbl INTEGER,
+    	FOREIGN KEY (id_wtr) REFERENCES id_wtr(waiter_wtr),
+    	FOREIGN KEY (id_tbl) REFERENCES id_tbl(table_tbl)
+    );''')
+
+    cursor.execute('''CREATE TABLE IF NOT EXISTS dish_dsh (
+    	id_dsh INTEGER PRIMARY KEY AUTOINCREMENT,
+    	dsh_name VARCHAR,
+    	dsh_price FLOAT
+    );''')
+
+    cursor.execute('''CREATE TABLE IF NOT EXISTS order_dish_odh (
+    	id_odh INTEGER PRIMARY KEY AUTOINCREMENT,
+    	id_dsh INTEGER,
+    	id_ord INTEGER,
+    	FOREIGN KEY (id_dsh) REFERENCES id_dsh(dish_dsh),
+    	FOREIGN KEY (id_ord) REFERENCES id_ord(order_ord)
+    );''')
 
 ########################################################################################
 #                                     API FUNCTIONS                                    #
 ########################################################################################
 
-def api_add_order(order):
+
+def api_add_order(order, dishes):
     order["ref"] = "ref-" + str(random.randint(100000, 999999))
     order["date"] = date.today()
+    order["waiter"] = WAITER
+
     cursor.execute(
-        "INSERT INTO order_ord (ord_ref, ord_hour) VALUES (:ref, :date)", order)
+        "INSERT INTO order_ord (ord_ref, ord_hour, id_wtr, id_tbl ) VALUES (:ref, :date, :waiter, :table)", order)
+    database.commit()
+    rqs = cursor.execute("SELECT id_ord FROM order_ord ORDER BY id_ord DESC LIMIT 1")
+    id_order = 0
+    for rq in rqs:
+        id_order = rq[0]
+    objs = []
+    for dish in dishes:
+        objs += [[id_order,dish]]
+    for obj in objs:
+        cursor.execute(
+            "INSERT INTO order_dish_odh (id_ord, id_dsh) VALUES (?,?)", obj)
     database.commit()
 
 def api_show_orders():
     os.system('clear')
     orders = cursor.execute(
-        "SELECT * FROM order_ord INNER JOIN dish_dsh ON dish_dsh.fk_dsh_ord=order_ord.id_ord")
-    orders = list(orders)
-    objs = []
+        "SELECT * FROM order_ord")
     for order in orders:
-        if [order[1]] not in objs:
-            objs += [[order[1]]]
-    for obj in objs:
-        for order in orders:
-            if order[1] in obj:
-                obj += [order[5], order[6]]
-    for i, obj in enumerate(objs):
-        print("Commande n", i, obj)
+        print(order[0],'-',order[1])
 
 
 def api_add_dish(dish):
@@ -75,6 +97,12 @@ def api_show_dishes():
     dishes = cursor.execute("SELECT * FROM dish_dsh")
     for dish in dishes:
         print("id", dish[0], " | ", dish[1], "\t| ", dish[2], "E")
+
+def api_show_waiter():
+    os.system('clear')
+    waiters = cursor.execute("SELECT * FROM waiter_wtr")
+    for waiter in waiters:
+        print("id", waiter[0], " | ", waiter[1], " ", waiter[2])
 
 #######################################################################################
 #                        TERMINAL FUNCTIONS                                           #
@@ -98,9 +126,8 @@ def app_menu() -> str:
 
 
 def add_order():
-    price = [10, 3, 14, 8]
     order = {}
-    order["order"] = []
+    dishes = []
     os.system('clear')
     table_id = int(input("Numero de table : "))
     os.system('clear')
@@ -110,9 +137,9 @@ def add_order():
         if std_in == "y" or std_in == "":
             dish_id = int(input("Indiquer l'id du plat : "))
             order["table"] = table_id
-            order["order"] += [{"dish": dish_id, "price": price[dish_id]}]
+            dishes += [dish_id]
         elif std_in == "n":
-            return order
+            return order, dishes
 
 
 def add_dish():
@@ -127,14 +154,18 @@ def prog_exit():
     database.close()
     exit()
 
+    
 
 def main():
     db_init()
+    api_show_waiter()
+    WAITER = int(input("Selectionner un id : "))
     while True:
         std_in = app_menu()
         match std_in:
             case "0":
-                api_add_order(add_order())
+                a,b = add_order()
+                api_add_order(a,b)
             case "1":
                 print("Supprimer une commande")
             case "2":
