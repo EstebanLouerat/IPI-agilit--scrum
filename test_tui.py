@@ -60,7 +60,7 @@ def _define_layout() -> ptg.Layout:
 
     # A slot in the same row as body, using the full non-occupied height and
     # 20% of the terminal's height.
-    layout.add_slot("Body right", width=0.2)
+    # layout.add_slot("Body right", width=0.2)
 
     layout.add_break()
 
@@ -82,7 +82,7 @@ def main(argv: list[str] | None = None) -> None:
         manager.layout = _define_layout()
 
         header = ptg.Window(
-            "[app.header] Welcome to PyTermGUI ",
+            "Gestion de Restaurant ",
             box="EMPTY",
         )
 
@@ -95,7 +95,7 @@ def main(argv: list[str] | None = None) -> None:
         # to "footer"
         manager.add(footer, assign="footer")
 
-        manager.add(ptg.Window("My sidebar"), assign="body_right")
+        # manager.add(ptg.Window("My sidebar"), assign="body_right")
         manager.add(ptg.Window("My body window"), assign="body")
 
     ptg.tim.print("[!gradient(210)]Goodbye!")
