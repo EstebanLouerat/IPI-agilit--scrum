@@ -63,7 +63,7 @@ def _define_layout() -> ptg.Layout:
     layout.add_break()
 
     # A body slot that will fill the entire width, and the height is remaining
-    layout.add_slot("Body", width=0.5)
+    layout.add_slot("Body")
 
     # A slot in the same row as body, using the full non-occupied height and
     # 20% of the terminal's width.
@@ -137,11 +137,7 @@ def _view_tables(manager: ptg.WindowManager) -> None:
                 ptg.Button("-10-", lambda *_: _add_command(manager, "10")),
             ),
         ),
-        ptg.Container(
-            ptg.Splitter(
-                ptg.Button("return", lambda *_: modal.close()),
-            ),
-        ),
+            ptg.Button("return", lambda *_: modal.close()),
     ).center()
 
     modal.select(1)
@@ -202,4 +198,4 @@ def main(argv: list[str] | None = None) -> None:
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])  
+    main(sys.argv[1:])
