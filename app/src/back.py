@@ -17,12 +17,12 @@ WAITER = 0
 ########################################################################################
 
 
-def custom_input(lst, message):
+def custom_input(lst: list | str, message) -> str:
     # print(lst)
     std_in = input('\033[92m' + message + '\033[0m')
     if type(lst) == str:
         i = 0
-        while(i < len(std_in) and std_in[i]):
+        while (i < len(std_in) and std_in[i]):
             if std_in[i] not in lst:
                 std_in = input('\033[91mMauvaise entree : \033[0m')
                 i = 0
@@ -94,6 +94,7 @@ def api_add_order(order, dishes):
         cursor.execute(
             "INSERT INTO order_dish_odh (id_ord, id_dsh) VALUES (?,?)", [*id_order, dish])
     database.commit()
+    detail_order(*id_order)
 
 
 def api_add_dish(dish):
@@ -106,7 +107,8 @@ def api_show_dishes():
     print("#############  MENU  #############")
     dishes = cursor.execute("SELECT * FROM dish_dsh")
     for dish in dishes:
-        print("id", dish[0], " | ", dish[1], "\t| ", dish[2], "E")
+        print('id', dish[0], (4-len(str(dish[0])))*' ', "|",
+              dish[1], (15-len(dish[1]))*' ', '|', dish[2], 'E')
 
 
 def api_choose_waiter():
@@ -127,72 +129,89 @@ def api_show_table():
 
 
 def api_show_orders():
+    order_ids = find_order_ids()
+    if custom_input(["y", "n"], "Afficher details (y/n) : ") == 'y':
+        id_order = custom_input(order_ids, "Selectionnez un id : ")
+        detail_order(id_order)
 
+def find_table_ids():
+    tables = cursor.execute('SELECT * FROM table_tbl')
+    table_ids = []
+    for table in tables:
+        table_ids += [str(table[0])]
+    return table_ids
+
+
+def api_show_order_by_table_id():
+    api_show_table()
+    table_ids = find_table_ids()
+    std_in = custom_input(table_ids, "Selectionnez une table : ")
+    orders = cursor.execute(
+        "SELECT * FROM order_ord WHERE id_tbl = (?)", std_in)
+    for order in orders:
+        print(order[0], '\t', order[1])
+
+
+def detail_order(id_order):
+    print('###########  COMMANDE  ###########')
+    orders = cursor.execute(
+        "SELECT * FROM order_ord WHERE order_ord.id_ord = (?)", [id_order])
+    for order in orders:
+        print(order[0], '\t', order[1])
+    details = cursor.execute(
+        "SELECT order_dish_odh.id_odh, dish_dsh.dsh_name, dish_dsh.dsh_price FROM dish_dsh INNER JOIN order_dish_odh ON dish_dsh.id_dsh=order_dish_odh.id_dsh AND order_dish_odh.id_ord = (?)", [id_order])
+    for detail in details:
+        print('id', detail[0], (4-len(str(detail[0])))*' ', "|",
+              detail[1], (15-len(detail[1]))*' ', "|", detail[2], 'E')
+
+
+def find_dish_ids():
+    dish_ids = []
+    dishes = cursor.execute("SELECT * FROM dish_dsh")
+    for dish in dishes:
+        dish_ids += [str(dish[0])]
+    return dish_ids
+
+
+def find_odh_ids(id_order):
+    odh_ids = []
+    odhs = cursor.execute(
+        'SELECT * FROM order_dish_odh WHERE order_dish_odh.id_ord=(?)', id_order)
+    for odh in odhs:
+        odh_ids += [str(odh[0])]
+    return odh_ids
+
+
+def find_order_ids():
     orders = cursor.execute(
         "SELECT * FROM order_ord")
     order_ids = []
     for order in orders:
         print(order[0], '\t', order[1])
         order_ids += [str(order[0])]
-    if custom_input(["y", "n"], "Afficher details (y/n) : ") == 'y':
-        id_order = custom_input(order_ids, "Selectionner un id : ")
-        details = cursor.execute(
-            'SELECT * FROM dish_dsh INNER JOIN order_dish_odh ON dish_dsh.id_dsh=order_dish_odh.id_dsh AND order_dish_odh.id_ord=(?)', [id_order])
-        for detail in details:
-            print(detail[1],"\t",detail[2])
-
-
-def api_show_order_by_table_id():
-    api_show_table()
-    tables = cursor.execute('SELECT * FROM table_tbl')
-    table_ids = []
-    for table in tables:
-        table_ids += [str(table[0])]
-    std_in = custom_input(table_ids, "Selectionner une table : ")
-
-    orders = cursor.execute(
-        "SELECT * FROM order_ord WHERE id_tbl = (?)", std_in)
-    for order in orders:
-        print(order[0],'\t',order[1])
+    return order_ids
 
 
 def api_update_order():
-
-    orders = cursor.execute(
-        "SELECT * FROM order_ord")
-    order_ids = []
-    for order in orders:
-        print(order[0],'\t',order[1])
-        order_ids += [str(order[0])]
+    order_ids = find_order_ids()
     id_order = custom_input(order_ids, "Selectionnez un id : ")
-    orders = cursor.execute(
-        "SELECT * FROM dish_dsh INNER JOIN order_dish_odh ON dish_dsh.id_dsh=order_dish_odh.id_dsh AND order_dish_odh.id_ord = (?)", [id_order])
-    for order in orders:
-        print(order[0],"\t",order[1],"\t",order[2])
-    dish_ids = []
-    dishes = cursor.execute("SELECT * FROM dish_dsh")
-    for dish in dishes:
-        dish_ids += [str(dish[0])]
+    detail_order(id_order)
+    dish_ids = find_dish_ids()
+    odh_ids = find_odh_ids(id_order)
     api_show_dishes()
     while custom_input(['y', 'n'], "Ajouter un plat (y/n) : ") == 'y':
-        id_dish = custom_input(dish_ids, "Slectionnez un id : ")
+        id_dish = custom_input(dish_ids, "Selectionnez un id : ")
         cursor.execute(
             "INSERT INTO order_dish_odh (id_ord, id_dsh) VALUES (?,?)", [id_order, id_dish])
     while custom_input(['y', 'n'], "Supprimer un plat (y/n) : ") == 'y':
-        for order in orders:
-            print(order[0],"\t",order[1],"\t",order[2])
-        id_dish = custom_input(dish_ids, "Slectionnez un id : ")
+        id_odh = custom_input(odh_ids, "Selectionnez un id : ")
         cursor.execute(
-            'DELETE FROM order_dish_odh WHERE order_dish_odh.id_ord=(?) AND order_dish_odh.id_dsh=(?)', [id_order, id_dish])
+            'DELETE FROM order_dish_odh WHERE order_dish_odh.id_ord=(?) AND order_dish_odh.id_odh=(?)', [id_order, id_odh])
+    detail_order(id_order)
     database.commit()
-    details = cursor.execute(
-            'SELECT * FROM dish_dsh INNER JOIN order_dish_odh ON dish_dsh.id_dsh=order_dish_odh.id_dsh AND order_dish_odh.id_ord=(?)', [id_order])
-    for detail in details:
-        print(detail[1],"\t",detail[2])
 
 
 def api_delete_order_by_id():
-
     orders = cursor.execute(
         "SELECT * FROM order_ord")
     ids = []
@@ -220,7 +239,7 @@ def app_menu():
     print("5 - Ajouter un plat")
     print("6 - Afficher les plats")
     print("7 - Quitter\033[0m")
-    return custom_input(['0', '1', '2', '3', '4', '5', '6', '7'], 'Sectionner un id de ligne : ')
+    return custom_input(['0', '1', '2', '3', '4', '5', '6', '7'], 'Selectionnez un id de ligne : ')
 
 #######################################################################################
 #                              APP FUNCTIONS                                          #
@@ -230,7 +249,6 @@ def app_menu():
 def add_order():
     order = {}
     dishes = []
-
     tables = cursor.execute('SELECT * FROM table_tbl')
     table_ids = []
     for table in tables:
@@ -254,7 +272,6 @@ def add_order():
 
 def add_dish():
     dish = {}
-
     dish["name"] = input("Nom : ")
     dish["price"] = float(custom_input("0123456789.", "Prix : "))
     return dish
