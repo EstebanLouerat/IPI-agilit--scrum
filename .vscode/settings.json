@@ -3,7 +3,7 @@
 		{
 			"previewLimit": 50,
 			"driver": "SQLite",
-			"database": "restaurant.db",
+			"database": "app/src/restaurant.db",
 			"name": "localhost"
 		}
 	]
